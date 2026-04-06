@@ -1714,8 +1714,14 @@ function calcPrescripcion(){
     diasEl.textContent=diffDias+' días';
     diasEl.style.color=diffDias<30?'#d4830a':'var(--azul)';
     labelEl.textContent='quedan hasta '+vencimiento.toLocaleDateString('es-ES');
-    detailEl.textContent='Plazo: '+años+' año'+(años!==1?'s':'')+' en '+pais+' para '+tipo.replace(/_/g,' ')+'.';
-    <!-- ════ POPUP DISCLAIMER ════ -->
+  }
+})();
+</script>
+  }
+  document.getElementById('pres-result').classList.add('show');
+}
+</script>
+  <!-- ════ POPUP DISCLAIMER ════ -->
 <div id="disclaimer-popup" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(10,22,40,0.92);backdrop-filter:blur(6px);padding:1.5rem">
   <div style="background:#fff;max-width:560px;width:100%;border-top:4px solid #d4830a;box-shadow:0 24px 80px rgba(10,22,40,0.4);max-height:90vh;overflow-y:auto">
     <div style="background:#fdf4e7;border-bottom:1px solid #f0d090;padding:1.2rem 1.5rem;display:flex;align-items:center;gap:0.8rem">
@@ -1752,10 +1758,6 @@ function calcPrescripcion(){
     if(p)p.style.display='none';
   }
 })();
-</script>
-  }
-  document.getElementById('pres-result').classList.add('show');
-}
 </script>
 </body>
 </html>
