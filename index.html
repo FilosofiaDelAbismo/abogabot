@@ -1691,7 +1691,7 @@ function addTyping(){
   var div=document.createElement('div');
   div.className='chat-msg bot';
   div.id='typing-indicator';
-  div.innerHTML='<div class="msg-av" aria-hidden="true">TB</div><div><div class="msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>';
+  div.innerHTML='<div class="msg-av" aria-hidden="true">TB</div><div><div class="msg-bubble"><div style="font-size:0.82rem;color:rgba(0,0,0,0.5);font-style:italic;padding:0.65rem 1.1rem 0.1rem">Buscando en la legislación…</div><div class="typing-dots" style="padding-top:0.2rem"><span></span><span></span><span></span></div></div></div>';
   body.appendChild(div);
   body.scrollTop=body.scrollHeight;
   return div;
