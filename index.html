@@ -858,6 +858,20 @@ footer{background:#04090f;color:rgba(255,255,255,0.35);padding:4rem 2rem}
   .planes-grid,.disclaimer-cards{grid-template-columns:1fr}
   .hero-stats{gap:1.5rem}
 }
+/* TAB-28: botón "Soy suscriptor" destacado con pulso sutil */
+.sub-cta{
+  display:inline-block;padding:5px 12px;border-radius:999px;
+  background:var(--oro-bg);border:1px solid var(--oro-bd);
+  color:var(--oro);font-weight:600;font-size:0.78rem;
+  text-decoration:none;letter-spacing:0.01em;
+  transition:background .2s,transform .15s,box-shadow .2s;
+  animation:subCtaPulse 2.6s ease-in-out infinite;
+}
+.sub-cta:hover{background:rgba(201,168,76,0.16);transform:translateY(-1px);animation:none}
+@keyframes subCtaPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0.45)}
+  50%{box-shadow:0 0 0 8px rgba(201,168,76,0)}
+}
 </style>
 </head>
 <body>
@@ -1024,7 +1038,7 @@ footer{background:#04090f;color:rgba(255,255,255,0.35);padding:4rem 2rem}
       </div>
       <div class="chat-footer-note">
         <div class="chat-counter" aria-live="polite">
-          <span id="counterText">5 consultas gratuitas disponibles hoy</span><div id="subscriberBar" style="margin-top:6px;font-size:0.78rem;color:var(--text-muted, #555);text-align:right;"><a href="#" onclick="promptSubscriber();return false">Soy suscriptor (introducir email)</a></div>
+          <span id="counterText">5 consultas gratuitas disponibles hoy</span><div id="subscriberBar" style="margin-top:8px;text-align:right;font-size:0.78rem;color:var(--muted);"><a href="#" class="sub-cta" onclick="promptSubscriber();return false">✦ Soy suscriptor</a></div>
           <div class="counter-bar" aria-hidden="true"><div class="counter-fill" id="counterFill" style="width:100%"></div></div>
         </div>
       </div>
@@ -1634,16 +1648,38 @@ var ro=new IntersectionObserver(function(entries){
 },{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
 document.querySelectorAll('.reveal').forEach(function(el){ro.observe(el)});
 
-// ─── COUNTER ───
+// ─── COUNTER (TAB-28: respeta plan del suscriptor) ───
 var MAX_QUERIES=5;
 var DAY_KEY='tab_count_'+new Date().toISOString().slice(0,10);
 var queryCount=parseInt(localStorage.getItem(DAY_KEY)||'0',10);
+window.currentPlan='free';
 function updateCounter(){
-  var rem=MAX_QUERIES-queryCount;
+  var plan=window.currentPlan||'free';
   var el=document.getElementById('counterText');
   var fill=document.getElementById('counterFill');
+  if(plan==='basico'){
+    if(el)el.textContent='Plan Básico · 30 consultas/día';
+    if(fill)fill.style.width='100%';
+    return;
+  }
+  if(plan==='pro'){
+    if(el)el.textContent='Plan Pro · consultas ilimitadas';
+    if(fill)fill.style.width='100%';
+    return;
+  }
+  var rem=MAX_QUERIES-queryCount;
   if(el)el.textContent=(rem>0?rem+' consultas gratuitas disponibles hoy':'Límite diario alcanzado · Regresa mañana');
   if(fill)fill.style.width=Math.max(0,(rem/MAX_QUERIES)*100)+'%';
+}
+async function refreshPlanFromServer(){
+  var em=(localStorage.getItem('tab_subscriber_email')||'').trim().toLowerCase();
+  if(!em){window.currentPlan='free';updateCounter();return;}
+  try{
+    var r=await fetch('https://api.tuabogabot.io/api/v1/subscription?email='+encodeURIComponent(em));
+    var d=await r.json();
+    window.currentPlan=(d && d.activa)?(d.plan||'basico'):'free';
+  }catch(e){window.currentPlan='free';}
+  updateCounter();
 }
 updateCounter();
 
@@ -1718,18 +1754,18 @@ function getSessionId(){
 // ─── TAB-20: SUSCRIPTOR (email-only) ───
 var SUBSCRIBER_KEY='tab_subscriber_email';
 function getSubscriberEmail(){return (localStorage.getItem(SUBSCRIBER_KEY)||'').trim().toLowerCase();}
-function setSubscriberEmail(e){if(e){localStorage.setItem(SUBSCRIBER_KEY,e.trim().toLowerCase());}else{localStorage.removeItem(SUBSCRIBER_KEY);} updateSubscriberUI();}
+function setSubscriberEmail(e){if(e){localStorage.setItem(SUBSCRIBER_KEY,e.trim().toLowerCase());}else{localStorage.removeItem(SUBSCRIBER_KEY);} updateSubscriberUI(); refreshPlanFromServer();}
 function updateSubscriberUI(){
   var em=getSubscriberEmail();var bar=document.getElementById('subscriberBar');if(!bar)return;
   if(em){bar.innerHTML='Logueado como <strong>'+em+'</strong> · <a href="#" onclick="setSubscriberEmail(\'\');return false">Cerrar sesión</a>';}
-  else{bar.innerHTML='<a href="#" onclick="promptSubscriber();return false">Soy suscriptor (introducir email)</a>';}
+  else{bar.innerHTML='<a href="#" class="sub-cta" onclick="promptSubscriber();return false">✦ Soy suscriptor</a>';}
 }
 function promptSubscriber(){
   var e=prompt('Si tienes una suscripción activa, introduce tu email de pago:');
   if(e&&/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){setSubscriberEmail(e);addMsg('bot','<p>Email registrado. Tu cuota se aplicará en la próxima consulta.</p>',false);}
   else if(e){addMsg('bot','<p>Email no válido.</p>',false);}
 }
-document.addEventListener('DOMContentLoaded',updateSubscriberUI);
+document.addEventListener('DOMContentLoaded',function(){updateSubscriberUI();refreshPlanFromServer();});
 // ─── TAB-22: Stripe checkout ───
 async function startCheckout(plan){
   try{

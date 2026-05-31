@@ -599,6 +599,20 @@ footer{background:#04090f;color:rgba(255,255,255,0.35);padding:4rem 2rem}
 @media(max-width:1024px){.footer-inner{grid-template-columns:1fr 1fr;gap:2.5rem}.faq-cols{grid-template-columns:1fr}}
 @media(max-width:768px){nav{padding:0 1.2rem}.nav-center,.nav-right{display:none}.hamburger{display:flex}.hero h1{font-size:clamp(2.3rem,8vw,3.8rem)}.pipeline-steps{grid-template-columns:repeat(2,1fr)}.pipe-step::after{display:none}.footer-inner{grid-template-columns:1fr}.calc-grid{grid-template-columns:1fr}}
 @media(max-width:480px){section{padding:4rem 1.3rem}.planes-grid,.disclaimer-cards{grid-template-columns:1fr}}
+/* TAB-28: botão "Sou assinante" destacado com pulso sutil */
+.sub-cta{
+  display:inline-block;padding:5px 12px;border-radius:999px;
+  background:var(--verde-br-bg,rgba(0,156,59,0.08));border:1px solid var(--verde-br-bd,rgba(0,156,59,0.25));
+  color:var(--verde-br,#009C3B);font-weight:600;font-size:0.78rem;
+  text-decoration:none;letter-spacing:0.01em;
+  transition:background .2s,transform .15s,box-shadow .2s;
+  animation:subCtaPulse 2.6s ease-in-out infinite;
+}
+.sub-cta:hover{background:rgba(0,156,59,0.18);transform:translateY(-1px);animation:none}
+@keyframes subCtaPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(0,156,59,0.45)}
+  50%{box-shadow:0 0 0 8px rgba(0,156,59,0)}
+}
 </style>
 </head>
 <body>
@@ -774,7 +788,7 @@ footer{background:#04090f;color:rgba(255,255,255,0.35);padding:4rem 2rem}
       </div>
       <div class="chat-footer-note">
         <div class="chat-counter" aria-live="polite">
-          <span id="counterText">5 consultas gratuitas disponíveis hoje</span><div id="subscriberBar" style="margin-top:6px;font-size:0.78rem;color:var(--text-muted, #555);text-align:right;"><a href="#" onclick="promptSubscriber();return false">Sou assinante (informe seu email)</a></div>
+          <span id="counterText">5 consultas gratuitas disponíveis hoje</span><div id="subscriberBar" style="margin-top:8px;text-align:right;font-size:0.78rem;color:var(--muted);"><a href="#" class="sub-cta" onclick="promptSubscriber();return false">✦ Sou assinante</a></div>
           <div class="counter-bar"><div class="counter-fill" id="counterFill" style="width:100%"></div></div>
         </div>
       </div>
@@ -1307,11 +1321,33 @@ function setCountry(btn,code){
   document.querySelectorAll('.country-btn').forEach(function(b){b.classList.remove('active')});
   btn.classList.add('active');selectedCountry=code;
 }
+window.currentPlan='free';
 function updateCounter(){
-  var rem=MAX_Q-queryCount;
+  var plan=window.currentPlan||'free';
   var el=document.getElementById('counterText'),fill=document.getElementById('counterFill');
+  if(plan==='basico'){
+    if(el)el.textContent='Plano Básico · 30 consultas/dia';
+    if(fill)fill.style.width='100%';
+    return;
+  }
+  if(plan==='pro'){
+    if(el)el.textContent='Plano Pro · consultas ilimitadas';
+    if(fill)fill.style.width='100%';
+    return;
+  }
+  var rem=MAX_Q-queryCount;
   if(el)el.textContent=(rem>0?rem+' consultas gratuitas disponíveis hoje':'Limite diário atingido · Volte amanhã');
   if(fill)fill.style.width=Math.max(0,(rem/MAX_Q)*100)+'%';
+}
+async function refreshPlanFromServer(){
+  var em=(localStorage.getItem('tab_subscriber_email')||'').trim().toLowerCase();
+  if(!em){window.currentPlan='free';updateCounter();return;}
+  try{
+    var r=await fetch('https://api.tuabogabot.io/api/v1/subscription?email='+encodeURIComponent(em));
+    var d=await r.json();
+    window.currentPlan=(d && d.activa)?(d.plan||'basico'):'free';
+  }catch(e){window.currentPlan='free';}
+  updateCounter();
 }
 updateCounter();
 function addMsg(role,html,disc){
@@ -1338,18 +1374,18 @@ function formatMd(s){
 // ─── TAB-20: ASSINANTE (email-only) ───
 var SUBSCRIBER_KEY='tab_subscriber_email';
 function getSubscriberEmail(){return (localStorage.getItem(SUBSCRIBER_KEY)||'').trim().toLowerCase();}
-function setSubscriberEmail(e){if(e){localStorage.setItem(SUBSCRIBER_KEY,e.trim().toLowerCase());}else{localStorage.removeItem(SUBSCRIBER_KEY);} updateSubscriberUI();}
+function setSubscriberEmail(e){if(e){localStorage.setItem(SUBSCRIBER_KEY,e.trim().toLowerCase());}else{localStorage.removeItem(SUBSCRIBER_KEY);} updateSubscriberUI(); refreshPlanFromServer();}
 function updateSubscriberUI(){
   var em=getSubscriberEmail();var bar=document.getElementById('subscriberBar');if(!bar)return;
   if(em){bar.innerHTML='Logado como <strong>'+em+'</strong> · <a href="#" onclick="setSubscriberEmail(\'\');return false">Sair</a>';}
-  else{bar.innerHTML='<a href="#" onclick="promptSubscriber();return false">Sou assinante (informe seu email)</a>';}
+  else{bar.innerHTML='<a href="#" class="sub-cta" onclick="promptSubscriber();return false">✦ Sou assinante</a>';}
 }
 function promptSubscriber(){
   var e=prompt('Se você tem uma assinatura ativa, informe o email de pagamento:');
   if(e&&/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){setSubscriberEmail(e);addMsg('bot','<p>Email registrado. Sua cota será aplicada na próxima consulta.</p>',false);}
   else if(e){addMsg('bot','<p>Email inválido.</p>',false);}
 }
-document.addEventListener('DOMContentLoaded',updateSubscriberUI);
+document.addEventListener('DOMContentLoaded',function(){updateSubscriberUI();refreshPlanFromServer();});
 // ─── TAB-22: Stripe checkout ───
 async function startCheckout(plan){
   try{
