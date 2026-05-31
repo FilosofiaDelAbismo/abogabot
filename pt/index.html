@@ -774,7 +774,7 @@ footer{background:#04090f;color:rgba(255,255,255,0.35);padding:4rem 2rem}
       </div>
       <div class="chat-footer-note">
         <div class="chat-counter" aria-live="polite">
-          <span id="counterText">5 consultas gratuitas disponíveis hoje</span>
+          <span id="counterText">5 consultas gratuitas disponíveis hoje</span><div id="subscriberBar" style="margin-top:6px;font-size:0.78rem;color:var(--text-muted, #555);text-align:right;"><a href="#" onclick="promptSubscriber();return false">Sou assinante (informe seu email)</a></div>
           <div class="counter-bar"><div class="counter-fill" id="counterFill" style="width:100%"></div></div>
         </div>
       </div>
@@ -1094,7 +1094,7 @@ footer{background:#04090f;color:rgba(255,255,255,0.35);padding:4rem 2rem}
       <div class="plan-card reveal">
         <div class="plan-header">
           <div class="plan-name">Grátis</div>
-          <div class="plan-price">0<sup>R$</sup><span>/mês</span></div>
+          <div class="plan-price">0<sup>€</sup><span>/mês</span></div>
           <div class="plan-desc">Para resolver dúvidas pontuais</div>
         </div>
         <ul class="plan-features">
@@ -1110,7 +1110,7 @@ footer{background:#04090f;color:rgba(255,255,255,0.35);padding:4rem 2rem}
       <div class="plan-card reveal">
         <div class="plan-header">
           <div class="plan-name">Básico</div>
-          <div class="plan-price">49<sup>R$</sup><span>/mês</span></div>
+          <div class="plan-price">15<sup>€</sup><span>/mês · IVA incl.</span></div>
           <div class="plan-desc">Para consultas frequentes</div>
         </div>
         <ul class="plan-features">
@@ -1121,13 +1121,13 @@ footer{background:#04090f;color:rgba(255,255,255,0.35);padding:4rem 2rem}
           <li><span class="check">✓</span>Histórico de consultas</li>
           <li><span class="cross">—</span>Sem geração de documentos</li>
         </ul>
-        <div class="plan-cta"><a href="#consulta" class="plan-btn primary">Em breve</a></div>
+        <div class="plan-cta"><button type="button" onclick="startCheckout('basico')" class="plan-btn primary" style="border:none;cursor:pointer;font-family:inherit;font-size:inherit;width:100%">Assinar →</button></div>
       </div>
       <div class="plan-card featured reveal">
         <div class="plan-badge">★ Mais popular</div>
         <div class="plan-header">
           <div class="plan-name">Pro</div>
-          <div class="plan-price">149<sup>R$</sup><span>/mês</span></div>
+          <div class="plan-price">29<sup>€</sup><span>/mês · IVA incl.</span></div>
           <div class="plan-desc">Para uso intensivo</div>
         </div>
         <ul class="plan-features">
@@ -1138,7 +1138,7 @@ footer{background:#04090f;color:rgba(255,255,255,0.35);padding:4rem 2rem}
           <li><span class="check">✓</span>Export PDF detalhado</li>
           <li><span class="check">✓</span>Suporte por email</li>
         </ul>
-        <div class="plan-cta"><a href="#consulta" class="plan-btn verde">Em breve</a></div>
+        <div class="plan-cta"><button type="button" onclick="startCheckout('pro')" class="plan-btn verde" style="border:none;cursor:pointer;font-family:inherit;font-size:inherit;width:100%">Assinar →</button></div>
       </div>
     </div>
   </section>
@@ -1335,16 +1335,54 @@ function formatMd(s){
     .replace(/^- (.+)$/gm,'<li style="margin-left:1rem;margin-bottom:3px">$1</li>')
     .replace(/\n\n/g,'</p><p style="margin-bottom:8px">').replace(/\n/g,'<br>');
 }
+// ─── TAB-20: ASSINANTE (email-only) ───
+var SUBSCRIBER_KEY='tab_subscriber_email';
+function getSubscriberEmail(){return (localStorage.getItem(SUBSCRIBER_KEY)||'').trim().toLowerCase();}
+function setSubscriberEmail(e){if(e){localStorage.setItem(SUBSCRIBER_KEY,e.trim().toLowerCase());}else{localStorage.removeItem(SUBSCRIBER_KEY);} updateSubscriberUI();}
+function updateSubscriberUI(){
+  var em=getSubscriberEmail();var bar=document.getElementById('subscriberBar');if(!bar)return;
+  if(em){bar.innerHTML='Logado como <strong>'+em+'</strong> · <a href="#" onclick="setSubscriberEmail(\'\');return false">Sair</a>';}
+  else{bar.innerHTML='<a href="#" onclick="promptSubscriber();return false">Sou assinante (informe seu email)</a>';}
+}
+function promptSubscriber(){
+  var e=prompt('Se você tem uma assinatura ativa, informe o email de pagamento:');
+  if(e&&/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){setSubscriberEmail(e);addMsg('bot','<p>Email registrado. Sua cota será aplicada na próxima consulta.</p>',false);}
+  else if(e){addMsg('bot','<p>Email inválido.</p>',false);}
+}
+document.addEventListener('DOMContentLoaded',updateSubscriberUI);
+// ─── TAB-22: Stripe checkout ───
+async function startCheckout(plan){
+  try{
+    var res=await fetch('https://api.tuabogabot.io/api/v1/checkout',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({plan:plan})
+    });
+    if(!res.ok){
+      var err=await res.json().catch(function(){return{};});
+      addMsg('bot','<p>'+(err.error||'Não foi possível iniciar o pagamento. Tente novamente mais tarde.')+'</p>',false);
+      return;
+    }
+    var data=await res.json();
+    if(data && data.url){window.location.href=data.url;}
+    else{addMsg('bot','<p>Erro: resposta inesperada do servidor.</p>',false);}
+  }catch(e){
+    addMsg('bot','<p>Erro de conexão ao iniciar o pagamento.</p>',false);
+  }
+}
+
+
 async function sendMsg(){
   var input=document.getElementById('chatInput');if(!input)return;
   var q=input.value.trim();if(!q)return;
-  if(queryCount>=MAX_Q){addMsg('bot','<p>Você atingiu o limite de <strong>5 consultas gratuitas</strong> por hoje. Volte amanhã ou acesse um plano pago.</p>',false);return}
+  var em=getSubscriberEmail();
+  if(!em && queryCount>=MAX_Q){addMsg('bot','<p>Você atingiu o limite de <strong>5 consultas gratuitas</strong> por hoje. Volte amanhã ou acesse um plano pago.</p>',false);return}
   input.value='';input.style.height='auto';
-  addMsg('user',q,false);queryCount++;localStorage.setItem(DAY_KEY,queryCount);updateCounter();
+  addMsg('user',q,false);
+  if(!em){queryCount++;localStorage.setItem(DAY_KEY,queryCount);updateCounter();}
   var typing=addTyping();
   var sys='Você é o TuAbogaBot, um assistente de informação jurídica orientativa em português brasileiro. País selecionado: '+selectedCountry+' ('+countryNames[selectedCountry]+'). IMPORTANTE: Forneça informação orientativa de caráter geral, NÃO assessoria jurídica. Nunca crie relação advogado-cliente. Sugira consultar advogado habilitado na OAB para decisões importantes. Seja claro, estruturado e em português brasileiro. Cite artigos de lei quando relevante.';
   try{
-    var res=await fetch('https://api.tuabogabot.io/api/v1/consulta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pregunta:q,pais:selectedCountry,session_id:getSessionId()})});
+    var res=await fetch('https://api.tuabogabot.io/api/v1/consulta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify((function(){var b={pregunta:q,pais:selectedCountry,session_id:getSessionId()};if(em)b.email=em;return b;})())});
     var data=await res.json();
     if(typing)typing.remove();
     if(!res.ok){addMsg('bot','<p>'+formatMd((data&&(data.mensaje||data.error))||'Desculpe, não consegui processar sua consulta. Tente novamente.')+'</p>',false);return}
