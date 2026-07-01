@@ -1686,7 +1686,7 @@ function updateCounter(){
 async function refreshPlanFromServer(){
   var em=(localStorage.getItem('tab_subscriber_email')||'').trim().toLowerCase();
   try{
-    var url='https://api.tuabogabot.io/api/v1/quota'+(em?('?email='+encodeURIComponent(em)):'');
+    var url='https://api.legalito.io/api/v1/quota'+(em?('?email='+encodeURIComponent(em)):'');
     var r=await fetch(url);
     var d=await r.json();
     window.currentPlan=d.plan||'free';
@@ -1782,7 +1782,7 @@ document.addEventListener('DOMContentLoaded',function(){updateSubscriberUI();ref
 // ─── TAB-22: Stripe checkout ───
 async function startCheckout(plan){
   try{
-    var res=await fetch('https://api.tuabogabot.io/api/v1/checkout',{
+    var res=await fetch('https://api.legalito.io/api/v1/checkout',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({plan:plan})
@@ -1819,7 +1819,7 @@ async function sendMsg(){
   try{
     var body={pregunta:q,pais:selectedCountry,session_id:getSessionId()};
     if(em)body.email=em;
-    var res=await fetch('https://api.tuabogabot.io/api/v1/consulta',{
+    var res=await fetch('https://api.legalito.io/api/v1/consulta',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(body)

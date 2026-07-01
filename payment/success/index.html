@@ -108,7 +108,7 @@ async function activar(){
   }
   setStatus('warn','Verificando con Stripe…');
   try{
-    var r=await fetch('https://api.tuabogabot.io/api/v1/subscription?email='+encodeURIComponent(em),{method:'GET'});
+    var r=await fetch('https://api.legalito.io/api/v1/subscription?email='+encodeURIComponent(em),{method:'GET'});
     var d=await r.json();
     if(d && d.activa){
       try{localStorage.setItem('tab_subscriber_email',em);}catch(e){}
